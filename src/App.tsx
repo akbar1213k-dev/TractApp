@@ -148,6 +148,36 @@ export default function App() {
     setActiveTab('list'); // Redirect to list after input
   };
 
+  const handleQuickSave = (suggName: string, suggType: string) => {
+    const newActivity: Activity = {
+      id: Date.now().toString(),
+      name: suggName.trim(),
+      type: suggType.trim() || 'Lainnya',
+      timestamp: Date.now(),
+      description: description.trim() // Mengambil teks keterangan saat ini (jika ada)
+    };
+
+    const updatedActivities = [newActivity, ...activities].sort((a, b) => b.timestamp - a.timestamp);
+    setActivities(updatedActivities);
+    
+    // Perbarui daftar saran (pindahkan ke posisi paling baru/kiri)
+    setActivitySuggestions(prev => {
+      const filtered = prev.filter(s => s.name.toLowerCase() !== suggName.toLowerCase());
+      return [{ name: suggName, type: suggType || 'Lainnya' }, ...filtered];
+    });
+
+    setTypeSuggestions(prev => {
+      const filtered = prev.filter(t => t.toLowerCase() !== (suggType || 'Lainnya').toLowerCase());
+      return [suggType || 'Lainnya', ...filtered];
+    });
+
+    // Reset form
+    setName('');
+    setDescription('');
+    setType('');
+    setActiveTab('list'); // Pindah ke tab riwayat
+  };
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editName.trim() || !editingId) return;
@@ -354,15 +384,13 @@ export default function App() {
                       {activitySuggestions.map(sugg => (
                         <span key={sugg.name} className="bg-blue-50 border border-blue-100 text-blue-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
                           <span 
-                            className="cursor-pointer hover:underline"
-                            onClick={() => {
-                              setName(sugg.name);
-                              setType(sugg.type);
-                            }}
-                            title="Klik untuk memakai nama ini beserta jenisnya"
+                            className="cursor-pointer hover:underline font-semibold"
+                            onClick={() => handleQuickSave(sugg.name, sugg.type)}
+                            title="Klik untuk langsung menyimpan aktivitas ini secara otomatis"
                           >
                             {sugg.name}
                           </span>
+                          
                           <button
                             type="button"
                             onDoubleClick={() => handleDeleteActivitySuggestion(sugg.name)}
