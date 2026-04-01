@@ -48,16 +48,17 @@ export default function App() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list' | 'stats'>('input');
   
-  // Custom Types State
-  const [activityTypes, setActivityTypes] = useState<string[]>(['Olahraga', 'Belajar', 'Bekerja', 'Hobi', 'Lainnya']);
-  const [newType, setNewType] = useState('');
-
-  // Activity Name Suggestions State
-  const [activityNames, setActivityNames] = useState<string[]>(['Lari Pagi', 'Meeting Proyek', 'Membaca Buku']);
+  // Suggestions State
+  const [activitySuggestions, setActivitySuggestions] = useState<{name: string, type: string}[]>([
+    { name: 'Lari Pagi', type: 'Olahraga' },
+    { name: 'Meeting Proyek', type: 'Bekerja' },
+    { name: 'Membaca Buku', type: 'Belajar' }
+  ]);
+  const [typeSuggestions, setTypeSuggestions] = useState<string[]>(['Olahraga', 'Bekerja', 'Belajar', 'Hobi', 'Lainnya']);
 
   // Form State
   const [name, setName] = useState('');
-  const [type, setType] = useState<string>('Bekerja');
+  const [type, setType] = useState<string>('');
   const [description, setDescription] = useState('');
   
   // Edit Modal State
@@ -69,22 +70,12 @@ export default function App() {
   // Delete Modal State
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleAddType = () => {
-    if (newType.trim() && !activityTypes.includes(newType.trim())) {
-      setActivityTypes([...activityTypes, newType.trim()]);
-      setNewType('');
-    }
+  const handleDeleteActivitySuggestion = (nameToDelete: string) => {
+    setActivitySuggestions(activitySuggestions.filter(s => s.name !== nameToDelete));
   };
 
-  const handleDeleteType = (typeToDelete: string) => {
-    setActivityTypes(activityTypes.filter(t => t !== typeToDelete));
-    if (type === typeToDelete) {
-      setType(activityTypes.find(t => t !== typeToDelete) || '');
-    }
-  };
-
-  const handleDeleteActivityName = (nameToDelete: string) => {
-    setActivityNames(activityNames.filter(n => n !== nameToDelete));
+  const handleDeleteTypeSuggestion = (typeToDelete: string) => {
+    setTypeSuggestions(typeSuggestions.filter(t => t !== typeToDelete));
   };
   
   // Initial dummy data
@@ -129,14 +120,17 @@ export default function App() {
 
    setActivities([newActivity, ...activities]);
     
-    // Tambahkan ke daftar saran jika belum ada
-    if (!activityNames.includes(name.trim())) {
-      setActivityNames([name.trim(), ...activityNames]);
+    // Tambahkan ke daftar saran nama & jenis jika belum ada
+    if (!activitySuggestions.some(s => s.name === name.trim())) {
+      setActivitySuggestions([{ name: name.trim(), type: type.trim() || 'Lainnya' }, ...activitySuggestions]);
+    }
+    if (type.trim() && !typeSuggestions.includes(type.trim())) {
+      setTypeSuggestions([type.trim(), ...typeSuggestions]);
     }
 
     setName('');
     setDescription('');
-    setType('Bekerja');
+    setType('');
     setActiveTab('list'); // Redirect to list after input
   };
 
@@ -250,20 +244,23 @@ export default function App() {
                     placeholder="Contoh: Lari pagi, Meeting klien..."
                   />
                   {/* Bubble Suggestions for Activity Names */}
-                  {activityNames.length > 0 && (
+                  {activitySuggestions.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {activityNames.map(actName => (
-                        <span key={actName} className="bg-blue-50 border border-blue-100 text-blue-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
+                      {activitySuggestions.map(sugg => (
+                        <span key={sugg.name} className="bg-blue-50 border border-blue-100 text-blue-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
                           <span 
                             className="cursor-pointer hover:underline"
-                            onClick={() => setName(actName)}
-                            title="Klik untuk memakai nama ini"
+                            onClick={() => {
+                              setName(sugg.name);
+                              setType(sugg.type);
+                            }}
+                            title="Klik untuk memakai nama ini beserta jenisnya"
                           >
-                            {actName}
+                            {sugg.name}
                           </span>
                           <button
                             type="button"
-                            onDoubleClick={() => handleDeleteActivityName(actName)}
+                            onDoubleClick={() => handleDeleteActivitySuggestion(sugg.name)}
                             className="text-blue-400 hover:bg-blue-200 hover:text-red-500 p-1 rounded-full transition-colors ml-1"
                             title="Klik ganda (double click) untuk menghapus riwayat nama ini"
                           >
@@ -274,20 +271,43 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Jenis Aktivitas
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-                  >
-                    {activityTypes.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="Contoh: Olahraga, Bekerja..."
+                  />
+                  {/* Bubble Suggestions for Activity Types */}
+                  {typeSuggestions.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {typeSuggestions.map(actType => (
+                        <span key={actType} className="bg-emerald-50 border border-emerald-100 text-emerald-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
+                          <span 
+                            className="cursor-pointer hover:underline"
+                            onClick={() => setType(actType)}
+                            title="Klik untuk memakai jenis ini"
+                          >
+                            {actType}
+                          </span>
+                          <button
+                            type="button"
+                            onDoubleClick={() => handleDeleteTypeSuggestion(actType)}
+                            className="text-emerald-400 hover:bg-emerald-200 hover:text-red-500 p-1 rounded-full transition-colors ml-1"
+                            title="Klik ganda (double click) untuk menghapus riwayat jenis ini"
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -303,43 +323,7 @@ export default function App() {
                   />
                 </div>
 
-                {/* Manajemen Jenis Aktivitas */}
-                <div className="mt-8 pt-8 border-t border-slate-200">
-                  <h3 className="text-sm font-medium text-slate-700 mb-3">Kelola Jenis Aktivitas</h3>
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      value={newType}
-                      onChange={(e) => setNewType(e.target.value)}
-                      className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
-                      placeholder="Tambah jenis baru..."
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddType}
-                      className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-medium"
-                    >
-                      <Plus size={16} /> Tambah
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {activityTypes.map(t => (
-                      <span key={t} className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2">
-                        {t}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteType(t)}
-                          className="text-slate-400 hover:text-red-500 transition-colors"
-                          title="Hapus jenis aktivitas"
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4">
+               <div className="pt-4">
                   <button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -550,14 +534,15 @@ export default function App() {
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nama Aktivitas
+                  Jenis Aktivitas
                 </label>
                 <input
                   type="text"
                   required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="Contoh: Olahraga, Bekerja..."
                 />
               </div>
               
