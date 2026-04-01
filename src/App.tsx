@@ -33,7 +33,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Types
+// Types v
 interface Activity {
   id: string;
   name: string;
