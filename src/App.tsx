@@ -93,8 +93,9 @@ export default function App() {
   // Edit Modal State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<string>('Bekerja');
+  const [editType, setEditType] = useState<string>('');
   const [editDescription, setEditDescription] = useState('');
+  const [editTimestamp, setEditTimestamp] = useState<number>(Date.now());
 
   // Delete Modal State
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -122,13 +123,19 @@ export default function App() {
   const updatedActivities = [newActivity, ...activities].sort((a, b) => b.timestamp - a.timestamp);
     setActivities(updatedActivities);
     
-    // Tambahkan ke daftar saran nama & jenis jika belum ada
-    if (!activitySuggestions.some(s => s.name === name.trim())) {
-      setActivitySuggestions([{ name: name.trim(), type: type.trim() || 'Lainnya' }, ...activitySuggestions]);
-    }
-    if (type.trim() && !typeSuggestions.includes(type.trim())) {
-      setTypeSuggestions([type.trim(), ...typeSuggestions]);
-    }
+    // Perbarui daftar saran: pindahkan ke depan (kiri) jika sudah ada, atau tambahkan baru
+    const trimmedName = name.trim();
+    const trimmedType = type.trim() || 'Lainnya';
+
+    setActivitySuggestions(prev => {
+      const filtered = prev.filter(s => s.name.toLowerCase() !== trimmedName.toLowerCase());
+      return [{ name: trimmedName, type: trimmedType }, ...filtered];
+    });
+
+    setTypeSuggestions(prev => {
+      const filtered = prev.filter(t => t.toLowerCase() !== trimmedType.toLowerCase());
+      return [trimmedType, ...filtered];
+    });
 
     setName('');
     setDescription('');
@@ -541,6 +548,19 @@ export default function App() {
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
 
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Nama Aktivitas
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Waktu Aktivitas
