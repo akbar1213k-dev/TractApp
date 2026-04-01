@@ -34,36 +34,51 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // Types
-type ActivityType = 'Olahraga' | 'Belajar' | 'Bekerja' | 'Hobi' | 'Lainnya';
-
 interface Activity {
   id: string;
   name: string;
-  type: ActivityType;
+  type: string;
   timestamp: number;
   description: string;
 }
 
-const ACTIVITY_TYPES: ActivityType[] = ['Olahraga', 'Belajar', 'Bekerja', 'Hobi', 'Lainnya'];
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'];
 
 export default function App() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeTab, setActiveTab] = useState<'input' | 'list' | 'stats'>('input');
   
+  // Custom Types State
+  const [activityTypes, setActivityTypes] = useState<string[]>(['Olahraga', 'Belajar', 'Bekerja', 'Hobi', 'Lainnya']);
+  const [newType, setNewType] = useState('');
+
   // Form State
   const [name, setName] = useState('');
-  const [type, setType] = useState<ActivityType>('Bekerja');
+  const [type, setType] = useState<string>('Bekerja');
   const [description, setDescription] = useState('');
   
   // Edit Modal State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<ActivityType>('Bekerja');
+  const [editType, setEditType] = useState<string>('Bekerja');
   const [editDescription, setEditDescription] = useState('');
 
   // Delete Modal State
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleAddType = () => {
+    if (newType.trim() && !activityTypes.includes(newType.trim())) {
+      setActivityTypes([...activityTypes, newType.trim()]);
+      setNewType('');
+    }
+  };
+
+  const handleDeleteType = (typeToDelete: string) => {
+    setActivityTypes(activityTypes.filter(t => t !== typeToDelete));
+    if (type === typeToDelete) {
+      setType(activityTypes.find(t => t !== typeToDelete) || '');
+    }
+  };
 
   // Initial dummy data
   useEffect(() => {
@@ -139,7 +154,8 @@ export default function App() {
   };
 
   // Stats calculations
-  const statsByType = ACTIVITY_TYPES.map(t => ({
+  const uniqueTypes = Array.from(new Set(activities.map(a => a.type)));
+  const statsByType = uniqueTypes.map(t => ({
     name: t,
     value: activities.filter(a => a.type === t).length
   })).filter(s => s.value > 0);
@@ -228,10 +244,10 @@ export default function App() {
                   </label>
                   <select
                     value={type}
-                    onChange={(e) => setType(e.target.value as ActivityType)}
+                    onChange={(e) => setType(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                   >
-                    {ACTIVITY_TYPES.map(t => (
+                    {activityTypes.map(t => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -248,6 +264,42 @@ export default function App() {
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                     placeholder="Tambahkan detail aktivitas..."
                   />
+                </div>
+
+                {/* Manajemen Jenis Aktivitas */}
+                <div className="mt-8 pt-8 border-t border-slate-200">
+                  <h3 className="text-sm font-medium text-slate-700 mb-3">Kelola Jenis Aktivitas</h3>
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newType}
+                      onChange={(e) => setNewType(e.target.value)}
+                      className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      placeholder="Tambah jenis baru..."
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddType}
+                      className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-medium"
+                    >
+                      <Plus size={16} /> Tambah
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {activityTypes.map(t => (
+                      <span key={t} className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2">
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteType(t)}
+                          className="text-slate-400 hover:text-red-500 transition-colors"
+                          title="Hapus jenis aktivitas"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="pt-4">
@@ -314,13 +366,13 @@ export default function App() {
                             {activity.name}
                           </td>
                           <td className="px-6 py-4 text-sm">
-                            <span className={cn(
+                           <span className={cn(
                               "px-2.5 py-1 rounded-full text-xs font-medium",
-                              activity.type === 'Olahraga' && "bg-blue-100 text-blue-700",
-                              activity.type === 'Belajar' && "bg-emerald-100 text-emerald-700",
-                              activity.type === 'Bekerja' && "bg-amber-100 text-amber-700",
-                              activity.type === 'Hobi' && "bg-purple-100 text-purple-700",
-                              activity.type === 'Lainnya' && "bg-slate-100 text-slate-700"
+                              activity.type === 'Olahraga' ? "bg-blue-100 text-blue-700" :
+                              activity.type === 'Belajar' ? "bg-emerald-100 text-emerald-700" :
+                              activity.type === 'Bekerja' ? "bg-amber-100 text-amber-700" :
+                              activity.type === 'Hobi' ? "bg-purple-100 text-purple-700" :
+                              "bg-slate-100 text-slate-700"
                             )}>
                               {activity.type}
                             </span>
@@ -478,10 +530,10 @@ export default function App() {
                 </label>
                 <select
                   value={editType}
-                  onChange={(e) => setEditType(e.target.value as ActivityType)}
+                  onChange={(e) => setEditType(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 >
-                  {ACTIVITY_TYPES.map(t => (
+                  {(activityTypes.includes(editType) ? activityTypes : [...activityTypes, editType]).map(t => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
