@@ -45,21 +45,57 @@ interface Activity {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'];
 
 export default function App() {
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    const saved = localStorage.getItem('tractapp_activities');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: '1', name: 'Lari Pagi', type: 'Olahraga', timestamp: Date.now() - 86400000 * 2, description: 'Lari keliling komplek 5km' },
+      { id: '2', name: 'Meeting Proyek', type: 'Bekerja', timestamp: Date.now() - 86400000, description: 'Diskusi fitur baru dengan tim' },
+      { id: '3', name: 'Membaca Buku', type: 'Belajar', timestamp: Date.now() - 3600000, description: 'Membaca buku Atomic Habits bab 1-3' }
+    ];
+  });
   const [activeTab, setActiveTab] = useState<'input' | 'list' | 'stats'>('input');
   
   // Suggestions State
-  const [activitySuggestions, setActivitySuggestions] = useState<{name: string, type: string}[]>([
-    { name: 'Lari Pagi', type: 'Olahraga' },
-    { name: 'Meeting Proyek', type: 'Bekerja' },
-    { name: 'Membaca Buku', type: 'Belajar' }
-  ]);
-  const [typeSuggestions, setTypeSuggestions] = useState<string[]>(['Olahraga', 'Bekerja', 'Belajar', 'Hobi', 'Lainnya']);
+  const [activitySuggestions, setActivitySuggestions] = useState<{name: string, type: string}[]>(() => {
+    const saved = localStorage.getItem('tractapp_activity_suggestions');
+    if (saved) return JSON.parse(saved);
+    return [
+      { name: 'Lari Pagi', type: 'Olahraga' },
+      { name: 'Meeting Proyek', type: 'Bekerja' },
+      { name: 'Membaca Buku', type: 'Belajar' }
+    ];
+  });
+  const [typeSuggestions, setTypeSuggestions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('tractapp_type_suggestions');
+    if (saved) return JSON.parse(saved);
+    return ['Olahraga', 'Bekerja', 'Belajar', 'Hobi', 'Lainnya'];
+  });
 
   // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('');
   const [description, setDescription] = useState('');
+  
+  // Edit Modal State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState<string>('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editTimestamp, setEditTimestamp] = useState<number>(Date.now());
+
+  // Save to LocalStorage effects
+  useEffect(() => {
+    localStorage.setItem('tractapp_activities', JSON.stringify(activities));
+  }, [activities]);
+
+  useEffect(() => {
+    localStorage.setItem('tractapp_activity_suggestions', JSON.stringify(activitySuggestions));
+  }, [activitySuggestions]);
+
+  useEffect(() => {
+    localStorage.setItem('tractapp_type_suggestions', JSON.stringify(typeSuggestions));
+  }, [typeSuggestions]);
   
   // Edit Modal State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,34 +113,6 @@ export default function App() {
   const handleDeleteTypeSuggestion = (typeToDelete: string) => {
     setTypeSuggestions(typeSuggestions.filter(t => t !== typeToDelete));
   };
-  
-  // Initial dummy data
-  useEffect(() => {
-    const dummyData: Activity[] = [
-      {
-        id: '1',
-        name: 'Lari Pagi',
-        type: 'Olahraga',
-        timestamp: Date.now() - 86400000 * 2,
-        description: 'Lari keliling komplek 5km'
-      },
-      {
-        id: '2',
-        name: 'Meeting Proyek',
-        type: 'Bekerja',
-        timestamp: Date.now() - 86400000,
-        description: 'Diskusi fitur baru dengan tim'
-      },
-      {
-        id: '3',
-        name: 'Membaca Buku',
-        type: 'Belajar',
-        timestamp: Date.now() - 3600000,
-        description: 'Membaca buku Atomic Habits bab 1-3'
-      }
-    ];
-    setActivities(dummyData);
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +126,8 @@ export default function App() {
       description: description.trim()
     };
 
-   setActivities([newActivity, ...activities]);
+  const updatedActivities = [newActivity, ...activities].sort((a, b) => b.timestamp - a.timestamp);
+    setActivities(updatedActivities);
     
     // Tambahkan ke daftar saran nama & jenis jika belum ada
     if (!activitySuggestions.some(s => s.name === name.trim())) {
@@ -138,11 +147,16 @@ export default function App() {
     e.preventDefault();
     if (!editName.trim() || !editingId) return;
 
-    setActivities(activities.map(act => 
+    const updatedActivities = activities.map(act => 
       act.id === editingId 
-        ? { ...act, name: editName.trim(), type: editType, description: editDescription.trim() }
+        ? { ...act, name: editName.trim(), type: editType, timestamp: editTimestamp, description: editDescription.trim() }
         : act
-    ));
+    );
+    
+    // Mengurutkan berdasarkan waktu (terbaru di atas)
+    updatedActivities.sort((a, b) => b.timestamp - a.timestamp);
+
+    setActivities(updatedActivities);
     setEditingId(null);
   };
 
@@ -151,6 +165,7 @@ export default function App() {
     setEditName(activity.name);
     setEditType(activity.type);
     setEditDescription(activity.description);
+    setEditTimestamp(activity.timestamp);
   };
 
   const confirmDelete = () => {
@@ -534,6 +549,32 @@ export default function App() {
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Nama Aktivitas
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Waktu Aktivitas
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={format(editTimestamp, "yyyy-MM-dd'T'HH:mm")}
+                  onChange={(e) => setEditTimestamp(new Date(e.target.value).getTime())}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Jenis Aktivitas
                 </label>
                 <input
@@ -544,21 +585,6 @@ export default function App() {
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="Contoh: Olahraga, Bekerja..."
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Jenis Aktivitas
-                </label>
-                <select
-                  value={editType}
-                  onChange={(e) => setEditType(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-                >
-                  {(activityTypes.includes(editType) ? activityTypes : [...activityTypes, editType]).map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
               </div>
 
               <div>
