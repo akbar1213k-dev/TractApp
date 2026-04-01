@@ -77,13 +77,6 @@ export default function App() {
   const [type, setType] = useState<string>('');
   const [description, setDescription] = useState('');
   
-  // Edit Modal State
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<string>('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editTimestamp, setEditTimestamp] = useState<number>(Date.now());
-
   // Save to LocalStorage effects
   useEffect(() => {
     localStorage.setItem('tractapp_activities', JSON.stringify(activities));
@@ -547,18 +540,6 @@ export default function App() {
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nama Aktivitas
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                />
-              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
