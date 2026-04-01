@@ -97,6 +97,11 @@ export default function App() {
   const [editDescription, setEditDescription] = useState('');
   const [editTimestamp, setEditTimestamp] = useState<number>(Date.now());
 
+  // List Controls State (Filter, Sort, Group)
+  const [groupBy, setGroupBy] = useState<'none' | 'month' | 'type'>('none');
+  const [filterType, setFilterType] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'nameAsc' | 'nameDesc'>('newest');
+
   // Delete Modal State
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -120,7 +125,7 @@ export default function App() {
       description: description.trim()
     };
 
-  const updatedActivities = [newActivity, ...activities].sort((a, b) => b.timestamp - a.timestamp);
+    const updatedActivities = [newActivity, ...activities].sort((a, b) => b.timestamp - a.timestamp);
     setActivities(updatedActivities);
     
     // Perbarui daftar saran: pindahkan ke depan (kiri) jika sudah ada, atau tambahkan baru
@@ -174,6 +179,36 @@ export default function App() {
       setDeletingId(null);
     }
   };
+
+  // List Processing Logic (Filter, Sort, Group)
+  const processedActivities = activities
+    .filter(a => filterType === 'All' || a.type === filterType)
+    .sort((a, b) => {
+      if (sortBy === 'newest') return b.timestamp - a.timestamp;
+      if (sortBy === 'oldest') return a.timestamp - b.timestamp;
+      if (sortBy === 'nameAsc') return a.name.localeCompare(b.name);
+      if (sortBy === 'nameDesc') return b.name.localeCompare(a.name);
+      return 0;
+    });
+
+  let groupedActivities: Record<string, Activity[]> = {};
+  if (groupBy === 'month') {
+    processedActivities.forEach(act => {
+      const monthYear = format(act.timestamp, 'MMMM yyyy', { locale: id });
+      if (!groupedActivities[monthYear]) groupedActivities[monthYear] = [];
+      groupedActivities[monthYear].push(act);
+    });
+  } else if (groupBy === 'type') {
+    processedActivities.forEach(act => {
+      const actType = act.type || 'Lainnya';
+      if (!groupedActivities[actType]) groupedActivities[actType] = [];
+      groupedActivities[actType].push(act);
+    });
+  } else {
+    groupedActivities = { 'Semua Aktivitas': processedActivities };
+  }
+
+  const uniqueActivityTypesForFilter = Array.from(new Set(activities.map(a => a.type)));
 
   // Stats calculations
   const uniqueTypes = Array.from(new Set(activities.map(a => a.type)));
@@ -246,6 +281,61 @@ export default function App() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
               <h2 className="text-2xl font-bold text-slate-800 mb-6">Tambah Aktivitas Baru</h2>
               <form onSubmit={handleSubmit} className="space-y-6">
+                
+                {/* 1. Jenis Aktivitas */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Jenis Aktivitas
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="Contoh: Olahraga, Bekerja..."
+                  />
+                  {/* Bubble Suggestions for Activity Types */}
+                  {typeSuggestions.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {typeSuggestions.map(actType => (
+                        <span key={actType} className="bg-emerald-50 border border-emerald-100 text-emerald-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
+                          <span 
+                            className="cursor-pointer hover:underline"
+                            onClick={() => setType(actType)}
+                            title="Klik untuk memakai jenis ini"
+                          >
+                            {actType}
+                          </span>
+                          <button
+                            type="button"
+                            onDoubleClick={() => handleDeleteTypeSuggestion(actType)}
+                            className="text-emerald-400 hover:bg-emerald-200 hover:text-red-500 p-1 rounded-full transition-colors ml-1"
+                            title="Klik ganda (double click) untuk menghapus riwayat jenis ini"
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Keterangan */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Keterangan
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                    placeholder="Tambahkan detail aktivitas..."
+                  />
+                </div>
+
+                {/* 3. Nama Aktivitas */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Nama Aktivitas
@@ -287,58 +377,8 @@ export default function App() {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Jenis Aktivitas
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="Contoh: Olahraga, Bekerja..."
-                  />
-                  {/* Bubble Suggestions for Activity Types */}
-                  {typeSuggestions.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {typeSuggestions.map(actType => (
-                        <span key={actType} className="bg-emerald-50 border border-emerald-100 text-emerald-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
-                          <span 
-                            className="cursor-pointer hover:underline"
-                            onClick={() => setType(actType)}
-                            title="Klik untuk memakai jenis ini"
-                          >
-                            {actType}
-                          </span>
-                          <button
-                            type="button"
-                            onDoubleClick={() => handleDeleteTypeSuggestion(actType)}
-                            className="text-emerald-400 hover:bg-emerald-200 hover:text-red-500 p-1 rounded-full transition-colors ml-1"
-                            title="Klik ganda (double click) untuk menghapus riwayat jenis ini"
-                          >
-                            <X size={14} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Keterangan
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-                    placeholder="Tambahkan detail aktivitas..."
-                  />
-                </div>
-
-               <div className="pt-4">
+                {/* 4. Submit */}
+                <div className="pt-4">
                   <button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -358,11 +398,55 @@ export default function App() {
         {/* TAB: LIST */}
         {activeTab === 'list' && (
           <div className="max-w-5xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">Riwayat Aktivitas</h2>
-              <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
-                {activities.length} Total
-              </span>
+            {/* Header List dengan Filter & Sort */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Riwayat Aktivitas</h2>
+                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full mt-2 inline-block">
+                  {processedActivities.length} Ditampilkan ({activities.length} Total)
+                </span>
+              </div>
+              
+              <div className="flex flex-wrap gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Kumpulkan</label>
+                  <select 
+                    value={groupBy} 
+                    onChange={e => setGroupBy(e.target.value as any)}
+                    className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                  >
+                    <option value="none">Tidak ada</option>
+                    <option value="month">Per Bulan</option>
+                    <option value="type">Per Jenis</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Filter</label>
+                  <select 
+                    value={filterType} 
+                    onChange={e => setFilterType(e.target.value)}
+                    className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                  >
+                    <option value="All">Semua Jenis</option>
+                    {uniqueActivityTypesForFilter.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Urutkan</label>
+                  <select 
+                    value={sortBy} 
+                    onChange={e => setSortBy(e.target.value as any)}
+                    className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                  >
+                    <option value="newest">Terbaru</option>
+                    <option value="oldest">Terlama</option>
+                    <option value="nameAsc">Nama (A-Z)</option>
+                    <option value="nameDesc">Nama (Z-A)</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {activities.length === 0 ? (
@@ -379,66 +463,85 @@ export default function App() {
                   Tambah Aktivitas
                 </button>
               </div>
+            ) : processedActivities.length === 0 ? (
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
+                <p className="text-slate-500 mb-6">Tidak ada aktivitas yang sesuai dengan filter.</p>
+                <button
+                  onClick={() => setFilterType('All')}
+                  className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium py-2 px-6 rounded-lg transition-colors"
+                >
+                  Reset Filter
+                </button>
+              </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
-                        <th className="px-6 py-4 font-medium">Waktu (Auto)</th>
-                        <th className="px-6 py-4 font-medium">Aktivitas</th>
-                        <th className="px-6 py-4 font-medium">Jenis</th>
-                        <th className="px-6 py-4 font-medium">Keterangan</th>
-                        <th className="px-6 py-4 font-medium text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {activities.map((activity) => (
-                        <tr key={activity.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
-                            {format(activity.timestamp, 'dd MMM yyyy, HH:mm', { locale: id })}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                            {activity.name}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                           <span className={cn(
-                              "px-2.5 py-1 rounded-full text-xs font-medium",
-                              activity.type === 'Olahraga' ? "bg-blue-100 text-blue-700" :
-                              activity.type === 'Belajar' ? "bg-emerald-100 text-emerald-700" :
-                              activity.type === 'Bekerja' ? "bg-amber-100 text-amber-700" :
-                              activity.type === 'Hobi' ? "bg-purple-100 text-purple-700" :
-                              "bg-slate-100 text-slate-700"
-                            )}>
-                              {activity.type}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
-                            {activity.description || '-'}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => openEditModal(activity)}
-                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button
-                                onClick={() => setDeletingId(activity.id)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Hapus"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="space-y-6">
+                {Object.entries(groupedActivities).map(([groupName, groupActs]) => (
+                  <div key={groupName} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    {groupBy !== 'none' && (
+                      <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+                        <h3 className="font-semibold text-slate-700">{groupName} <span className="text-sm font-normal text-slate-500 ml-2">({groupActs.length})</span></h3>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
+                            <th className="px-6 py-4 font-medium">Waktu (Auto)</th>
+                            <th className="px-6 py-4 font-medium">Aktivitas</th>
+                            <th className="px-6 py-4 font-medium">Jenis</th>
+                            <th className="px-6 py-4 font-medium">Keterangan</th>
+                            <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {groupActs.map((activity) => (
+                            <tr key={activity.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
+                                {format(activity.timestamp, 'dd MMM yyyy, HH:mm', { locale: id })}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                                {activity.name}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                               <span className={cn(
+                                  "px-2.5 py-1 rounded-full text-xs font-medium",
+                                  activity.type === 'Olahraga' ? "bg-blue-100 text-blue-700" :
+                                  activity.type === 'Belajar' ? "bg-emerald-100 text-emerald-700" :
+                                  activity.type === 'Bekerja' ? "bg-amber-100 text-amber-700" :
+                                  activity.type === 'Hobi' ? "bg-purple-100 text-purple-700" :
+                                  "bg-slate-100 text-slate-700"
+                                )}>
+                                  {activity.type}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                                {activity.description || '-'}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => openEditModal(activity)}
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingId(activity.id)}
+                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Hapus"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -533,7 +636,7 @@ export default function App() {
 
       </main>
 
-      {/* Edit Modal */}
+      {/* Edit Modal - dengan pengaman Waktu (Date) anti-blank */}
       {editingId && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -547,7 +650,7 @@ export default function App() {
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
-
+              
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Nama Aktivitas
@@ -560,7 +663,7 @@ export default function App() {
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Waktu Aktivitas
@@ -569,7 +672,11 @@ export default function App() {
                   type="datetime-local"
                   required
                   value={format(editTimestamp, "yyyy-MM-dd'T'HH:mm")}
-                  onChange={(e) => setEditTimestamp(new Date(e.target.value).getTime())}
+                  onChange={(e) => {
+                    const newTime = new Date(e.target.value).getTime();
+                    // Cegah blank screen dengan mengecek validitas input tanggal
+                    if (!isNaN(newTime)) setEditTimestamp(newTime);
+                  }}
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 />
               </div>
