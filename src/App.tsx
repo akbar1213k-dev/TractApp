@@ -52,6 +52,9 @@ export default function App() {
   const [activityTypes, setActivityTypes] = useState<string[]>(['Olahraga', 'Belajar', 'Bekerja', 'Hobi', 'Lainnya']);
   const [newType, setNewType] = useState('');
 
+  // Activity Name Suggestions State
+  const [activityNames, setActivityNames] = useState<string[]>(['Lari Pagi', 'Meeting Proyek', 'Membaca Buku']);
+
   // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('Bekerja');
@@ -80,6 +83,10 @@ export default function App() {
     }
   };
 
+  const handleDeleteActivityName = (nameToDelete: string) => {
+    setActivityNames(activityNames.filter(n => n !== nameToDelete));
+  };
+  
   // Initial dummy data
   useEffect(() => {
     const dummyData: Activity[] = [
@@ -120,7 +127,13 @@ export default function App() {
       description: description.trim()
     };
 
-    setActivities([newActivity, ...activities]);
+   setActivities([newActivity, ...activities]);
+    
+    // Tambahkan ke daftar saran jika belum ada
+    if (!activityNames.includes(name.trim())) {
+      setActivityNames([name.trim(), ...activityNames]);
+    }
+
     setName('');
     setDescription('');
     setType('Bekerja');
@@ -236,6 +249,30 @@ export default function App() {
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     placeholder="Contoh: Lari pagi, Meeting klien..."
                   />
+                  {/* Bubble Suggestions for Activity Names */}
+                  {activityNames.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {activityNames.map(actName => (
+                        <span key={actName} className="bg-blue-50 border border-blue-100 text-blue-700 pl-3 pr-1 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors">
+                          <span 
+                            className="cursor-pointer hover:underline"
+                            onClick={() => setName(actName)}
+                            title="Klik untuk memakai nama ini"
+                          >
+                            {actName}
+                          </span>
+                          <button
+                            type="button"
+                            onDoubleClick={() => handleDeleteActivityName(actName)}
+                            className="text-blue-400 hover:bg-blue-200 hover:text-red-500 p-1 rounded-full transition-colors ml-1"
+                            title="Klik ganda (double click) untuk menghapus riwayat nama ini"
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
